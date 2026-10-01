@@ -40,7 +40,7 @@ class HotspotService {
     if (existing != null && await existing.exists()) return existing;
 
     final source = await rootBundle.loadString(_assetPath);
-    final dir = await Directory.systemTemp.createTemp('hotspot_control_');
+    final dir = await Directory.systemTemp.createTemp('lanspot_');
     final file = File('${dir.path}${Platform.pathSeparator}hotspot_helper.ps1');
     await file.writeAsString(source, encoding: utf8, flush: true);
     _script = file;

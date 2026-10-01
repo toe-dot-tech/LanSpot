@@ -1,12 +1,12 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hotspot_control/hotspot_service.dart';
-import 'package:hotspot_control/main.dart';
-import 'package:hotspot_control/models.dart';
-import 'package:hotspot_control/prefs.dart';
-import 'package:hotspot_control/theme.dart';
+import 'package:lanspot/hotspot_service.dart';
+import 'package:lanspot/main.dart';
+import 'package:lanspot/models.dart';
+import 'package:lanspot/prefs.dart';
+import 'package:lanspot/theme.dart';
 
 /// A stand-in for the PowerShell helper, so layout can be exercised without
 /// spawning a process per poll.

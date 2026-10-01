@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'models.dart';
 
-/// Small JSON-file settings store in %APPDATA%\HotspotControl\settings.json.
+/// Small JSON-file settings store in %APPDATA%\LanSpot\settings.json.
 /// Avoids a plugin dependency for something this simple.
 class Prefs {
   Prefs._(this._file, this._values);
@@ -25,10 +25,9 @@ class Prefs {
   /// before the first build, instead of the screen showing defaults for a beat
   /// while a future resolves.
   static Prefs load() {
-    final dir = Directory(
-      '${Platform.environment['APPDATA'] ?? Platform.environment['USERPROFILE']}'
-      '${Platform.pathSeparator}HotspotControl',
-    );
+    final root =
+        Platform.environment['APPDATA'] ?? Platform.environment['USERPROFILE'] ?? '';
+    final dir = Directory('$root${Platform.pathSeparator}LanSpot');
     if (!dir.existsSync()) dir.createSync(recursive: true);
     final file = File('${dir.path}${Platform.pathSeparator}settings.json');
 
@@ -39,6 +38,24 @@ class Prefs {
         if (decoded is Map) values = decoded.cast<String, dynamic>();
       } catch (_) {
         values = <String, dynamic>{};
+      }
+    } else {
+      // The app was called Hotspot Control before it was renamed. Carry any
+      // existing settings across rather than silently resetting someone's
+      // network name and password.
+      final legacy = File(
+        '$root${Platform.pathSeparator}HotspotControl${Platform.pathSeparator}settings.json',
+      );
+      if (legacy.existsSync()) {
+        try {
+          final decoded = jsonDecode(legacy.readAsStringSync());
+          if (decoded is Map) {
+            values = decoded.cast<String, dynamic>();
+            file.writeAsStringSync(jsonEncode(values));
+          }
+        } catch (_) {
+          values = <String, dynamic>{};
+        }
       }
     }
 

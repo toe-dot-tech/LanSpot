@@ -50,10 +50,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'
 
-$script:RulePrefix = 'HotspotControl block'
+$script:RulePrefix = 'LanSpot block'
 # Deliberately a different prefix from the starvation rules above so that
 # removing one never takes the other with it.
-$script:ClientRulePrefix = 'HotspotControl client'
+$script:ClientRulePrefix = 'LanSpot client'
 $script:HotspotDescPattern = 'Wi-Fi Direct'
 $script:DefaultSubnet = '192.168.137.0/24'
 
@@ -349,7 +349,7 @@ function Set-BlockRule {
     if ($WifiAlias -and $SubnetCidr) {
         New-NetFirewallRule -DisplayName "$script:RulePrefix - subnet egress" `
             -Description 'Stops devices on the hotspot from reaching the internet.' `
-            -Group 'HotspotControl' -Direction Outbound -Action Block -Profile Any `
+            -Group 'LanSpot' -Direction Outbound -Action Block -Profile Any `
             -Enabled True -InterfaceAlias $WifiAlias -LocalAddress $SubnetCidr -RemoteAddress Any | Out-Null
         $created += "$script:RulePrefix - subnet egress"
     }
@@ -361,7 +361,7 @@ function Set-BlockRule {
         if ($ranges.Count -gt 0) {
             New-NetFirewallRule -DisplayName "$script:RulePrefix - client scope" `
                 -Description 'Blocks hotspot clients from reaching anything outside the hotspot subnet.' `
-                -Group 'HotspotControl' -Direction Inbound -Action Block -Profile Any `
+                -Group 'LanSpot' -Direction Inbound -Action Block -Profile Any `
                 -Enabled True -InterfaceAlias $HotspotAlias -RemoteAddress $ranges | Out-Null
             $created += "$script:RulePrefix - client scope [$($ranges -join ', ')]"
         }
@@ -484,7 +484,7 @@ function Set-ClientBlockRule {
 
     $rule = New-NetFirewallRule -DisplayName "$script:ClientRulePrefix - $token" `
         -Description "Blocks a single device from the Hotspot Control hotspot." `
-        -Group 'HotspotControl' -Direction Inbound -Action Block -Profile Any `
+        -Group 'LanSpot' -Direction Inbound -Action Block -Profile Any `
         -Enabled True -InterfaceAlias $NicName -RemoteAddress $Ip
     Invalidate-RuleCache
     return "$script:ClientRulePrefix - $token ($Ip)"

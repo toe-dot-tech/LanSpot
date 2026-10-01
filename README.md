@@ -1,81 +1,109 @@
 # LanSpot
 
-Windows mobile hotspot control. Turn your PC into a Wi‑Fi hotspot, switch between Normal and No Internet modes, see connected devices in real time, and block devices per‑MAC with targeted Windows Defender Firewall rules. Minimal, premium light‑mode UI with a live marching border while background work runs.
+**Windows mobile hotspot control.** Turn your PC into a Wi-Fi hotspot, switch between Normal and No Internet modes, watch connected devices appear in real time, and block individual devices by MAC address.
+
+Minimal, light-mode-first interface with a marching border that shows when Windows is still working.
 
 ## Features
 
-- **Two modes.** Normal shares your internet; No Internet runs the hotspot without upstream internet (clients stay offline).
-- **Real‑time state.** Hotspot status, Wi‑Fi radio, and connected clients update live.
-- **Per‑device blocking.** Block individual devices via the Windows Defender Firewall (the block list is the firewall). Unblock any device or clear the whole list.
-- **Settings follow Windows.** Edits are tracked per field and only changed values are pushed to Windows. Starting the hotspot never overwrites your existing SSID/passphrase/band unless you edit them.
-- **Resilient IPC.** Backend runs as a persistent PowerShell helper over a loopback TCP socket. The app opens the port, the helper connects back.
-- **Fast + main helpers.** Two persistent helper processes keep a 6–17ms `quick` poll separate from heavier operations.
-- **Marching busy border.** Indicates background work by marching dashes along the window border.
-- **Activity log with copy.** Copy logs and errors for diagnostics.
-- **Light‑mode first.** Premium, minimal UI with optional dark mode. |
+- **Two modes.** *Normal* shares your internet. *No Internet* runs the hotspot with clients deliberately cut off from the internet.
+- **Real-time state.** Hotspot status, the Wi-Fi radio, and connected devices update live — including changes you make in Windows Settings, not just in this app.
+- **Per-device blocking.** Block a single device by MAC using targeted Windows Defender Firewall rules. Unblock one, or clear the list. The firewall *is* the block list.
+- **Settings that follow Windows.** The name, password, and band fields are a live view of what Windows already has, not a second copy. Only fields you actually edit are ever written back, so a stray click cannot rewrite your passphrase or band.
+- **Marching busy border.** Long PowerShell operations feel responsive because the window border animates in place while work is in flight, instead of the UI appearing to hang.
+- **Activity log with copy.** One button copies logs and errors for pasting into a bug report.
+- **Light mode by default**, with an optional dark theme. No unnecessary shadows or visual noise.
 
-Extras: set the network name / password / band, pick which no-internet
-connection the offline mode shares from, stop Windows from switching the
-hotspot off when nobody is connected, and turn your own Wi-Fi radio off from
-the app.
+## Screenshots
 
-The settings fields are a live view of what Windows has, not a second copy of
-it. Change the name in the Windows Settings app and this one follows. Only
-fields you actually edit get pushed back, and *Apply now* stays disabled until
-you edit something, so a stray click cannot rewrite the WPA version, the
-password, or the band.
-
-## Running it
-
-```
-flutter build windows --release
-```
-
-The exe lands in `build\windows\x64\runner\Release\hotspot_control.exe`. It asks
-for administrator rights on launch (it creates firewall rules and drives the
-Windows tethering API), and re-launches itself elevated once you approve.
+_Coming soon._
 
 ## How it works
 
-`assets/hotspot_helper.ps1` does all the real work, one action per process:
+### WinRT tethering, not `netsh`
 
-- **Starting and stopping the hotspot** goes through
-  `Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager`, the
-  same WinRT API the Settings app uses.
-- **"No internet"** is a pair of Windows Firewall rules. The first blocks the
-  hotspot subnet (`192.168.137.0/24` by default) from leaving through the
-  shared adapter. The second blocks anything on the Wi-Fi Direct adapter that
-  is not aimed at the hotspot subnet, which covers the case where ICS rewrites
-  the source address before the first rule is evaluated. Traffic to the PC's
-  own DHCP and DNS is deliberately left open so devices still connect and show
-  "connected, no internet".
-- **"Offline hotspot"** shares from a connection that has no internet, for
-  example the Hyper-V adapter `vEthernet (Default Switch)` or
-  `Bluetooth Network Connection`. Windows refuses to start a hotspot with no
-  source at all, so one of these is required. The app lists whatever it finds.
+The backend drives `Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager` — the same WinRT API the Windows Settings app uses.
 
-Everything the helper discovers is looked up by adapter *description* at
-runtime, because Windows renumbers the `Local Area Connection* N` aliases and
-keeps several `Wi-Fi Direct Virtual Adapter` instances around between reboots.
+This is deliberate. The common approach (`netsh wlan set hostednetwork` and the tools built on it) does not work on modern hardware: on an Intel AX211, `netsh wlan show drivers` reports `Hosted network supported: No`, so there is no hosted network to start regardless of what the script asks for.
 
-### Why not the usual `netsh wlan` trick?
+### No Internet mode is a firewall rule
 
-Your Intel AX211 driver reports `Hosted network supported: No`, so
-`netsh wlan set hostednetwork` and tools built on it (MyPublicWiFi and friends)
-do not work on this machine. That is why the app uses the WinRT tethering API
-instead.
+Windows has no native way to run a hotspot while denying clients internet. LanSpot does it with two inbound-block rules on the Wi-Fi Direct adapter:
 
-## Tests
+1. A rule blocking the hotspot subnet (`192.168.137.0/24` by default) from leaving through the shared adapter.
+2. A rule blocking anything on the Wi-Fi Direct adapter not aimed at that subnet, which covers the case where ICS rewrites the source address before the first rule is evaluated.
 
-```
-flutter test
-```
+Traffic to the PC's own DHCP and DNS is deliberately left open, so devices still associate and correctly report "connected, no internet".
 
-`test/hotspot_service_test.dart` runs the real helper end to end: it unpacks the
-script from the app assets, runs it and parses the reply.
+### IPC over a loopback TCP socket
+
+The backend is a single PowerShell script, `assets/hotspot_helper.ps1`, run as a long-lived process per channel. The app binds `127.0.0.1` on an ephemeral port and passes the port to the helper on the command line; the helper connects back and then serves newline-delimited JSON requests.
+
+The socket exists because **Windows PowerShell does not reliably deliver lines written to its redirected stdin.** Under `-File` and `-Command`, with `runInShell`, and through `cmd /c`, `ReadLine()` on the redirected stream blocks forever. Piping works from `cmd /c` — for example `cmd /c more` reads the same pipe fine — so this is a PowerShell host quirk, not a pipe bug. Every request appeared to hang for its full timeout. A loopback socket sidesteps it entirely.
+
+There are **two** helper processes:
+
+| Process | Serves | Warm latency |
+| --- | --- | --- |
+| `fast` | `quick` polls only | 6–17 ms |
+| `main` | everything else | — |
+
+The split matters. A cold `status` call costs about 14 seconds, and a warm one runs 0.9–2.7 s. If polls shared a process with actions, a 300 ms poll would queue behind a slow action and the entire UI would stutter. Keeping the poll on its own process makes that impossible.
+
+Inside each process the hot lookups are cached: the tethering manager, the physical Wi-Fi adapter, and the firewall rule set. Firewall work goes through `netsh` rather than `Get-NetFirewallRule`, which walks 1016 rules and costs 2.2 s warm. Client addresses come from `arp -a` (~80 ms) rather than `Get-NetNeighbor` (2.1 s cold).
+
+### Never clobber the live configuration
+
+`ConfigureAccessPointAsync` is a **full replacement** of the access point configuration, not a patch — every field you send wins, and omitted fields get overwritten. LanSpot therefore tracks which fields you have actually edited and sends only those. Starting the hotspot does not touch the name, password, or band at all.
+
+This contract is the easiest thing to break in this codebase, so it is documented in `CONTRIBUTING.md` as one of two rules that must be preserved.
 
 ## Requirements
 
-- Windows 11 with a Wi-Fi adapter that supports hosting a hotspot
+- Windows 10 or 11, x64
+- A Wi-Fi adapter that supports hosting a hotspot
 - Windows PowerShell 5.1 (present on every Windows install)
-- No extra runtimes, no .NET SDK, no third party packages
+- Flutter 3.11+ / Dart 3.5+ to build from source
+
+No .NET SDK, no Python, no third-party runtime packages. The only dependency is Flutter itself, used as a UI toolkit.
+
+Administrator rights are requested at launch, because the app creates firewall rules and drives the tethering API. The executable manifest deliberately stays `asInvoker` and elevation is requested at runtime, only when a privileged operation actually needs it.
+
+## Build
+
+```bash
+flutter pub get
+flutter build windows --release
+```
+
+The binary lands at `build/windows/x64/runner/Release/LanSpot.exe`.
+
+To run it, launch through Explorer:
+
+```powershell
+Start-Process explorer.exe -ArgumentList "build\windows\x64\runner\Release\LanSpot.exe"
+```
+
+The indirection matters when testing. Starting the `.exe` directly from a shell whose integrity level is lower than the target breaks the app's self-elevation handshake.
+
+## Tests
+
+```bash
+flutter test
+```
+
+| Suite | What it covers |
+| --- | --- |
+| `test/models_test.dart` | Payload parsing, block-list handling, quick-state merge semantics |
+| `test/ui_test.dart` | Widget behaviour against a fake service |
+| `test/hotspot_service_test.dart` | **End-to-end against the live Windows tethering APIs** |
+
+The end-to-end suite toggles real hardware state and restores it afterwards. It will interfere with a hotspot you are actually using, so do not run it while your phone is connected.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the two invariants you need to know before touching the settings or polling code, and [SECURITY.md](SECURITY.md) for the threat model.
+
+## License
+
+[MIT](LICENSE) © 2026 Emmanuel Orimoluye (TOE Tech)

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:hotspot_control/models.dart';
+import 'package:lanspot/models.dart';
 
 void main() {
   test('modes round trip through their wire names', () {

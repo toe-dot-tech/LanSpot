@@ -4,7 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hotspot_control/hotspot_service.dart';
+import 'package:lanspot/hotspot_service.dart';
 
 /// End-to-end check that the bundled PowerShell helper is reachable, gets
 /// unpacked from the Flutter assets, and returns a reply this app can read.
