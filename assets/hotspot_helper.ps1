@@ -1,7 +1,7 @@
 <#
   hotspot_helper.ps1
 
-  Backend for the "Hotspot Control" Flutter app.
+  Backend for the LanSpot Flutter app.
 
   Two ways to run:
     * One shot:  -Action <name> -Payload <json> -OutFile <file>
@@ -483,7 +483,7 @@ function Set-ClientBlockRule {
     if (-not $Ip) { throw "This device has no address on the hotspot yet, so there is nothing to block. Reconnect it and try again." }
 
     $rule = New-NetFirewallRule -DisplayName "$script:ClientRulePrefix - $token" `
-        -Description "Blocks a single device from the Hotspot Control hotspot." `
+        -Description "Blocks a single device from the LanSpot hotspot." `
         -Group 'LanSpot' -Direction Inbound -Action Block -Profile Any `
         -Enabled True -InterfaceAlias $NicName -RemoteAddress $Ip
     Invalidate-RuleCache

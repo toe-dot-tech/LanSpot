@@ -16,21 +16,21 @@ import 'theme.dart';
 const String kElevatedInstanceArg = '--elevated-instance';
 
 void main(List<String> args) {
-  runApp(HotspotControlApp(
+  runApp(LanSpotApp(
     skipElevation: kDebugMode || args.contains(kElevatedInstanceArg),
   ));
 }
 
-class HotspotControlApp extends StatefulWidget {
-  const HotspotControlApp({super.key, required this.skipElevation});
+class LanSpotApp extends StatefulWidget {
+  const LanSpotApp({super.key, required this.skipElevation});
 
   final bool skipElevation;
 
   @override
-  State<HotspotControlApp> createState() => _HotspotControlAppState();
+  State<LanSpotApp> createState() => _LanSpotAppState();
 }
 
-class _HotspotControlAppState extends State<HotspotControlApp> {
+class _LanSpotAppState extends State<LanSpotApp> {
   /// Loaded once here so the theme is known for the very first frame, and so the
   /// page and the title bar are writing to the same file rather than each
   /// keeping a copy.
@@ -42,7 +42,7 @@ class _HotspotControlAppState extends State<HotspotControlApp> {
   Widget build(BuildContext context) {
     final tokens = _dark ? Tokens.dark : Tokens.light;
     return MaterialApp(
-      title: 'Hotspot Control',
+      title: 'LanSpot',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(tokens),
       darkTheme: buildTheme(Tokens.dark),
@@ -632,7 +632,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _copyLogs() async {
     final status = _status;
     final buffer = StringBuffer()
-      ..writeln('=== Hotspot Control report ===')
+      ..writeln('=== LanSpot report ===')
       ..writeln('copied at: ${DateTime.now().toIso8601String()}')
       ..writeln('mode: ${_mode.wire}')
       ..writeln('ssid setting: ${_ssid.text}')
@@ -791,7 +791,7 @@ class _HomePageState extends State<HomePage> {
       children: <Widget>[
         Flexible(
           child: Text(
-            'Hotspot Control',
+            'LanSpot',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium,

@@ -38,13 +38,13 @@ elevation, and the app will self-elevate via `Start-Process -Verb RunAs` when
 needed. The manifest stays `asInvoker` on purpose: elevation is requested at
 runtime only, when a specific privileged operation needs it.
 
-**Firewall rule names.** Rules LanSpot creates are prefixed `HotspotControl
-block` and `HotspotControl client` so they can be identified and removed
+**Firewall rule names.** Rules LanSpot creates are prefixed `LanSpot block`
+and `LanSpot client` so they can be identified and removed
 cleanly. They are the block list — deleting the rules in Windows Firewall
 removes the blocks.
 
 **Settings.** Stored unencrypted at
-`%AppData%\HotspotControl\settings.json`. This includes the hotspot
+`%AppData%\LanSpot\settings.json`. This includes the hotspot
 passphrase. It is readable by any process running as your user, which on
 Windows is already a high bar, but it is not encrypted at rest.
 

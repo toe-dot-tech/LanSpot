@@ -2,6 +2,10 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+// Declares SetCurrentProcessExplicitAppUserModelID. It lives in shell32's
+// shobjidl.h, which windows.h does not pull in, so it has to be named here.
+#include <shobjidl.h>
+
 #include "flutter_window.h"
 #include "utils.h"
 
@@ -16,6 +20,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+  // Set an explicit AppUserModelID before creating any windows.
+  //
+  // Without this, an unpackaged app is identified by its full executable path,
+  // so the taskbar entry, grouping, and any pinned-icon behaviour all silently
+  // change whenever the binary is moved or renamed. Declaring it here keeps the
+  // identity stable at "LanSpot" and lets the UI show a friendly name instead
+  // of the raw package identity.
+  ::SetCurrentProcessExplicitAppUserModelID(L"LanSpot");
 
   flutter::DartProject project(L"data");
 
